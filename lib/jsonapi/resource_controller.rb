@@ -32,7 +32,8 @@ module JSONAPI
           fields: @request.fields,
           context: context,
           attribute_formatters: attribute_formatters,
-          key_formatter: key_formatter)
+          key_formatter: key_formatter),
+        content_type: Mime::JSONAPI
     rescue => e
       handle_exceptions(e)
     end
@@ -55,7 +56,8 @@ module JSONAPI
           fields: @request.fields,
           context: context,
           attribute_formatters: attribute_formatters,
-          key_formatter: key_formatter)
+          key_formatter: key_formatter),
+        content_type: Mime::JSONAPI
     rescue => e
       handle_exceptions(e)
     end
@@ -68,7 +70,8 @@ module JSONAPI
       parent_resource = resource_klass.find_by_key(parent_key, context)
 
       association = resource_klass._association(association_type)
-      render json: { association_type => parent_resource.send(association.key)}
+      render json: { association_type => parent_resource.send(association.key)},
+             content_type: Mime::JSONAPI
     rescue => e
       handle_exceptions(e)
     end
@@ -145,7 +148,9 @@ module JSONAPI
     end
 
     def render_errors(errors, status = :bad_request)
-      render(json: {errors: errors}, status: errors.count == 1 ? errors[0].status : status)
+      render json: {errors: errors},
+             status: errors.count == 1 ? errors[0].status : status,
+             content_type: Mime::JSONAPI
     end
 
     def process_request_operations
@@ -165,7 +170,9 @@ module JSONAPI
       end
 
       if errors.count > 0
-        render :status => errors.count == 1 ? errors[0].status : :bad_request, json: {errors: errors}
+        render :status => errors.count == 1 ? errors[0].status : :bad_request,
+               json: {errors: errors},
+               content_type: Mime::JSONAPI
       else
         if results.length > 0 && resources.length > 0
           render :status => results[0].code,
@@ -174,7 +181,8 @@ module JSONAPI
                                                                          fields: @request.fields,
                                                                          context: context,
                                                                          attribute_formatters: attribute_formatters,
-                                                                         key_formatter: key_formatter)
+                                                                         key_formatter: key_formatter),
+                 content_type: Mime::JSONAPI
         else
           render :status => results[0].code, json: nil
         end

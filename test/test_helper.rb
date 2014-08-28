@@ -10,10 +10,7 @@ end
 require 'minitest/autorun'
 require 'minitest/spec'
 require 'rails/all'
-
-require 'jsonapi/routing_ext'
-require 'jsonapi/configuration'
-require 'jsonapi/formatter'
+require 'jsonapi-resources'
 
 require File.expand_path('../helpers/value_matchers', __FILE__)
 require File.expand_path('../helpers/hash_helpers', __FILE__)
