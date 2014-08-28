@@ -24,10 +24,11 @@ module JSONAPI
 
     def index
       render json: JSONAPI::ResourceSerializer.new.serialize(
-          resource_klass.find(resource_klass.verify_filters(@request.filters, context), context),
-          @request.includes,
-          @request.fields,
-          context)
+                resource_klass.find(resource_klass.verify_filters(@request.filters, context), context),
+                @request.includes,
+                @request.fields,
+                context),
+             content_type: Mime::JSONAPI
     rescue => e
       handle_exceptions(e)
     end
@@ -41,10 +42,11 @@ module JSONAPI
       end
 
       render json: JSONAPI::ResourceSerializer.new.serialize(
-          resources,
-          @request.includes,
-          @request.fields,
-          context)
+                resources,
+                @request.includes,
+                @request.fields,
+                context),
+             content_type: Mime::JSONAPI
     rescue => e
       handle_exceptions(e)
     end
@@ -57,7 +59,8 @@ module JSONAPI
       parent_resource = resource_klass.find_by_key(parent_key, context)
 
       association = resource_klass._association(association_type)
-      render json: { association_type => parent_resource.send(association.key)}
+      render json: { association_type => parent_resource.send(association.key)},
+             content_type: Mime::JSONAPI
     rescue => e
       handle_exceptions(e)
     end
@@ -116,7 +119,9 @@ module JSONAPI
     end
 
     def render_errors(errors, status = :bad_request)
-      render(json: {errors: errors}, status: errors.count == 1 ? errors[0].status : status)
+      render json: {errors: errors},
+             status: errors.count == 1 ? errors[0].status : status,
+             content_type: Mime::JSONAPI
     end
 
     def process_request_operations
@@ -136,13 +141,17 @@ module JSONAPI
       end
 
       if errors.count > 0
-        render :status => errors.count == 1 ? errors[0].status : :bad_request, json: {errors: errors}
+        render :status => errors.count == 1 ? errors[0].status : :bad_request,
+               json: {errors: errors},
+               content_type: Mime::JSONAPI
       else
         # if patch
-          render :status => results[0].code, json: JSONAPI::ResourceSerializer.new.serialize(resources,
-                                                                                               @request.includes,
-                                                                                               @request.fields,
-                                                                                               context)
+        render :status => results[0].code,
+               json: JSONAPI::ResourceSerializer.new.serialize(resources,
+                                                               @request.includes,
+                                                               @request.fields,
+                                                               context),
+               content_type: Mime::JSONAPI
         # else
         #   result_hash = {}
         #   resources.each do |resource|
