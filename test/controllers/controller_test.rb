@@ -2,6 +2,11 @@ require File.expand_path('../../test_helper', __FILE__)
 require File.expand_path('../../fixtures/active_record', __FILE__)
 
 class PostsControllerTest < ActionController::TestCase
+  def setup
+    @request.headers['Content-Type'] = Mime::JSONAPI
+    @request.headers['Accept'] = Mime::JSONAPI
+  end
+
   def test_index
     get :index
     assert_response :success
@@ -230,6 +235,38 @@ class PostsControllerTest < ActionController::TestCase
     assert_equal 3, json_response['posts'][0]['links']['author']
     assert_equal 'JR is Great', json_response['posts'][0]['title']
     assert_equal 'JSONAPIResources is the greatest thing since unsliced bread.', json_response['posts'][0]['body']
+  end
+
+  def test_create_missing_content_type
+    @request.headers['Content-Type'] = nil
+    @request.headers['Accept'] = nil
+
+    post :create, { posts: {
+        title: 'JR is Great',
+        body:  'JSONAPIResources is the greatest thing since unsliced bread.',
+        links: {
+            author: 3
+        }
+    }
+    }
+
+    assert_response :bad_request
+    assert_equal 1, json_response['errors'].size
+    assert_equal 'Expected Content-Type to be application/vnd.api+json', json_response['errors'][0]['detail']
+  end
+
+  def test_create_missing_accept
+    @request.headers['Accept'] = nil
+    get :index
+    assert_response :success
+  end
+
+  def test_create_wrong_accept
+    @request.headers['Accept'] = Mime::HTML
+    get :index
+    assert_response :bad_request
+    assert_equal 1, json_response['errors'].size
+    assert_equal 'Expected Accept to be application/vnd.api+json', json_response['errors'][0]['detail']
   end
 
   def test_create_link_to_missing_object
@@ -737,6 +774,11 @@ class PostsControllerTest < ActionController::TestCase
 end
 
 class TagsControllerTest < ActionController::TestCase
+  def setup
+    @request.headers['Content-Type'] = Mime::JSONAPI
+    @request.headers['Accept'] = Mime::JSONAPI
+  end
+
   def test_tags_index
     get :index, {ids: '6,7,8,9', include: 'posts,posts.tags,posts.author.posts'}
     assert_response :success
@@ -759,6 +801,11 @@ class TagsControllerTest < ActionController::TestCase
 end
 
 class ExpenseEntriesControllerTest < ActionController::TestCase
+  def setup
+    @request.headers['Content-Type'] = Mime::JSONAPI
+    @request.headers['Accept'] = Mime::JSONAPI
+  end
+
   def test_expense_entries_index
     get :index
     assert_response :success
@@ -767,6 +814,11 @@ class ExpenseEntriesControllerTest < ActionController::TestCase
 end
 
 class CurrenciesControllerTest < ActionController::TestCase
+  def setup
+    @request.headers['Content-Type'] = Mime::JSONAPI
+    @request.headers['Accept'] = Mime::JSONAPI
+  end
+
   def test_currencies_index
     get :index
     assert_response :success
@@ -782,6 +834,11 @@ class CurrenciesControllerTest < ActionController::TestCase
 end
 
 class PeopleControllerTest < ActionController::TestCase
+  def setup
+    @request.headers['Content-Type'] = Mime::JSONAPI
+    @request.headers['Accept'] = Mime::JSONAPI
+  end
+
   def test_create_validations
     post :create, { people: {
         name: 'Steve Jobs',
@@ -841,6 +898,11 @@ class PeopleControllerTest < ActionController::TestCase
 end
 
 class AuthorsControllerTest < ActionController::TestCase
+  def setup
+    @request.headers['Content-Type'] = Mime::JSONAPI
+    @request.headers['Accept'] = Mime::JSONAPI
+  end
+
   def test_get_person_as_author
     get :index, {id: '1'}
     assert_response :success
@@ -875,6 +937,11 @@ class AuthorsControllerTest < ActionController::TestCase
 end
 
 class BreedsControllerTest < ActionController::TestCase
+  def setup
+    @request.headers['Content-Type'] = Mime::JSONAPI
+    @request.headers['Accept'] = Mime::JSONAPI
+  end
+
   def test_poro_index
     get :index
     assert_response :success

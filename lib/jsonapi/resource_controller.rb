@@ -15,6 +15,8 @@ module JSONAPI
 
     before_filter {
       begin
+        check_jsonapi_accept(request)
+        check_jsonapi_content_type(request) if ['create', 'update', 'create_association'].include?(params[:action])
         @request = JSONAPI::Request.new(context, params)
         render_errors(@request.errors) unless @request.errors.empty?
       rescue => e
@@ -122,6 +124,16 @@ module JSONAPI
       render json: {errors: errors},
              status: errors.count == 1 ? errors[0].status : status,
              content_type: Mime::JSONAPI
+    end
+
+    def check_jsonapi_accept(request)
+      if request.headers["Accept"] && request.headers["Accept"] != Mime::JSONAPI
+        raise JSONAPI::Exceptions::RoutingError.new('Expected Accept to be application/vnd.api+json')
+      end
+    end
+
+    def check_jsonapi_content_type(request)
+      raise JSONAPI::Exceptions::RoutingError.new('Expected Content-Type to be application/vnd.api+json') unless request.headers["Content-Type"] == Mime::JSONAPI
     end
 
     def process_request_operations

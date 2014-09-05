@@ -173,5 +173,19 @@ module JSONAPI
       end
     end
 
+    class RoutingError < Error
+      attr_accessor :message
+      def initialize(message)
+        @message = message
+      end
+
+      def errors
+        [JSONAPI::Error.new(code: JSONAPI::ROUTING_ERROR,
+                            status: :bad_request,
+                            title: 'Routing Error',
+                            detail: @message)]
+      end
+    end
+
   end
 end
