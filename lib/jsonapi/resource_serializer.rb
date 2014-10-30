@@ -20,7 +20,8 @@ module JSONAPI
 
       @linked_objects = {}
 
-      requested_associations = parse_includes(include)
+      requested_associations = {}
+      parse_includes(include, requested_associations)
 
       if is_resource_collection
         @primary_class_name = source[0].class._type
@@ -65,8 +66,7 @@ module JSONAPI
     # Convert an array of associated objects to include along with the primary document in the form of
     # ['comments','author','comments.tags','author.posts'] into a structure that tells what we need to include
     # from each association.
-    def parse_includes(includes)
-      requested_associations = {}
+    def parse_includes(includes, requested_associations)
       includes.each do |include|
         include = include.to_s.underscore
 
@@ -75,14 +75,14 @@ module JSONAPI
           association_name = include[0, pos].to_sym
           requested_associations[association_name] ||= {}
           requested_associations[association_name].store(:include_children, true)
-          requested_associations[association_name].store(:include_related, parse_includes([include[pos+1, include.length]]))
+          requested_associations[association_name][:include_related] ||= {}
+          parse_includes([include[pos+1, include.length]], requested_associations[association_name][:include_related])
         else
           association_name = include.to_sym
           requested_associations[association_name] ||= {}
           requested_associations[association_name].store(:include, true)
         end
       end if includes.is_a?(Array)
-      return requested_associations
     end
 
     # Process the primary source object(s). This will then serialize associated object recursively based on the
