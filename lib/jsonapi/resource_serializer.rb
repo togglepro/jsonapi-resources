@@ -1,5 +1,7 @@
 module JSONAPI
   class ResourceSerializer
+    include ActionController::UrlFor
+    include Rails.application.routes.url_helpers
 
     # Converts a single resource, or an array of resources to a hash, conforming to the JSONAPI structure
     # include:
@@ -15,10 +17,14 @@ module JSONAPI
 
       @fields =  options.fetch(:fields, {})
       include = options.fetch(:include, [])
+      @base_url = options.fetch(:base_url, '/')
+      @namespace = options.fetch(:namespace, '')
 
       @key_formatter = options.fetch(:key_formatter, JSONAPI.configuration.key_formatter)
+      @toplevel_links = options.fetch(:toplevel_links, JSONAPI.configuration.toplevel_links)
 
       @linked_objects = {}
+      @links = {}
 
       requested_associations = {}
       parse_includes(include, requested_associations)
@@ -49,10 +55,16 @@ module JSONAPI
         linked_hash[format_key(class_name)] = linked_objects unless linked_objects.empty?
       end
 
+      primary_hash = {}
+
+      if @links.size > 0
+        primary_hash.merge!({links: @links})
+      end
+
       if is_resource_collection
-        primary_hash = {format_key(primary_class_name) => primary_objects}
+        primary_hash.merge!({format_key(primary_class_name) => primary_objects})
       else
-        primary_hash = {format_key(primary_class_name) => primary_objects[0]}
+        primary_hash.merge!({format_key(primary_class_name) => primary_objects[0]})
       end
 
       if linked_hash.size > 0
@@ -63,6 +75,12 @@ module JSONAPI
     end
 
     private
+    def add_top_level_links(resource_type)
+      return if @toplevel_links == :none
+      resource = Resource.resource_for(resource_type)
+      @links.merge!(resource._links(link_format: @toplevel_links, namespace: @namespace, base_url: @base_url))
+    end
+
     # Convert an array of associated objects to include along with the primary document in the form of
     # ['comments','author','comments.tags','author.posts'] into a structure that tells what we need to include
     # from each association.
@@ -96,22 +114,16 @@ module JSONAPI
           if already_serialized?(@primary_class_name, id)
             set_primary(@primary_class_name, id)
           end
-
-          add_linked_object(@primary_class_name, id, object_hash(resource,  requested_associations), true)
+          add_primary_object(@primary_class_name, id, object_hash(resource, requested_associations))
         end
       else
         resource = source
         id = resource.id
-        # ToDo: See if this is actually needed
-        # if already_serialized?(@primary_class_name, id)
-        #   set_primary(@primary_class_name, id)
-        # end
-
-        add_linked_object(@primary_class_name, id, object_hash(source,  requested_associations), true)
+        add_primary_object(@primary_class_name, id, object_hash(source, requested_associations))
       end
     end
 
-    # Returns a serialized hash for the source model, with
+    # Returns a serialized hash for the source model
     def object_hash(source, requested_associations)
       obj_hash = attribute_hash(source)
       links = links_hash(source, requested_associations)
@@ -208,21 +220,30 @@ module JSONAPI
       @linked_objects[type][id][:primary] = true
     end
 
-    # Collects the hashes for all objects processed by the serializer
-    def add_linked_object(type, id, object_hash, primary = false)
-      type = format_key(type)
-
-      unless @linked_objects.key?(type)
-        @linked_objects[type] = {}
-      end
-
-      if already_serialized?(type, id)
-        if primary
-          set_primary(type, id)
+    def store_object(type, id, primary, obj)
+      formatted_type = format_key(type)
+      unless already_serialized?(formatted_type, id)
+        unless @linked_objects.key?(formatted_type)
+          @linked_objects[formatted_type] = {}
+          add_top_level_links(type)
         end
-      else
-        @linked_objects[type].store(id, {primary: primary, object_hash: object_hash})
+        @linked_objects[formatted_type].store(id, {primary: primary, object_hash: obj})
       end
+    end
+
+    def add_primary_object(type, id, object_hash)
+      formatted_type = format_key(type)
+
+      if already_serialized?(formatted_type, id)
+        set_primary(formatted_type, id)
+      else
+        store_object(type, id, true, object_hash)
+      end
+    end
+
+    # Collects the hashes for linked objects processed by the serializer
+    def add_linked_object(type, id, object_hash)
+      store_object(type, id, false, object_hash)
     end
 
     def format_key(key)

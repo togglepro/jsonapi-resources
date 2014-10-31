@@ -42,4 +42,37 @@ class ResourceTest < MiniTest::Unit::TestCase
     assert_kind_of(Hash, associations)
     assert_equal(associations.size, 2)
   end
+
+  def test_links_href
+    links = CatResource._links(link_format: :href, base_url: 'http://test')
+    expected_links = {
+      'cats.mother' => 'http://test/cats/{cats.mother}',
+      'cats.father' => 'http://test/cats/{cats.father}',
+    }
+
+    assert_hash_equals(expected_links, links)
+  end
+
+  def test_links_full
+    links = CatResource._links(link_format: :full, base_url: 'http://test')
+    expected_links = {
+      'cats.mother' => {
+        href: 'http://test/cats/{cats.mother}',
+        type: 'cats'
+      },
+      'cats.father' => {
+        href: 'http://test/cats/{cats.father}',
+        type: 'cats'
+      }
+    }
+
+    assert_hash_equals(expected_links, links)
+  end
+
+  def test_links_none
+    links = CatResource._links(link_format: :none, base_url: 'http://test')
+
+    assert_nil(links)
+  end
+
 end

@@ -223,6 +223,42 @@ module JSONAPI
         _associations.keys | _attributes.keys
       end
 
+      def _links(options = {})
+        link_format = options.fetch(:link_format, :href)
+        return if link_format == :none
+
+        # ToDo: Find a better way to generate the URL.
+        namespace = options.fetch(:namespace, '')
+        base_url = options.fetch(:base_url, 'localhost')
+
+        links = {}
+        _associations.values.each do |association|
+          namespaced_name = if namespace.blank?
+                              "#{association.type.to_s.pluralize}"
+                            else
+                              "#{namespace.underscore}/#{association.type.to_s.pluralize}"
+                            end
+
+          href = "#{base_url}/#{namespaced_name}/{#{_type}.#{association.name}}"
+
+          links["#{_type}.#{association.name}"] =
+            case link_format
+              when :full
+                {
+                  href: href,
+                  type: association.type.to_s
+                }
+              when :href
+                href
+              else
+                # :nocov:
+                raise ArgumentError.new(link_format)
+                # :nocov:
+            end
+        end
+        links
+      end
+
       # Override this method if you have more complex requirements than this basic find method provides
       def find(filters, options = {})
         context = options[:context]

@@ -22,7 +22,10 @@ module JSONAPI
           include: @request.include,
           fields: @request.fields,
           attribute_formatters: attribute_formatters,
-          key_formatter: key_formatter)
+          key_formatter: key_formatter,
+          base_url: request.base_url,
+          namespace: self.class.name.deconstantize
+      )
     rescue => e
       handle_exceptions(e)
     end
@@ -44,7 +47,10 @@ module JSONAPI
           include: @request.include,
           fields: @request.fields,
           attribute_formatters: attribute_formatters,
-          key_formatter: key_formatter)
+          key_formatter: key_formatter,
+          base_url: request.base_url,
+          namespace: self.class.name.deconstantize
+      )
     rescue => e
       handle_exceptions(e)
     end
@@ -178,7 +184,9 @@ module JSONAPI
                                                                          include: @request.include,
                                                                          fields: @request.fields,
                                                                          attribute_formatters: attribute_formatters,
-                                                                         key_formatter: key_formatter)
+                                                                         key_formatter: key_formatter,
+                                                                         base_url: request.base_url,
+                                                                         namespace: self.class.name.deconstantize)
         else
           render :status => results[0].code, json: nil
         end

@@ -5,7 +5,7 @@ module JSONAPI
   class Request
     include ResourceFor
 
-    attr_accessor :fields, :include, :filters, :sort_params, :errors, :operations, :resource_klass, :context
+    attr_accessor :fields, :include, :filters, :sort_params, :errors, :operations, :resource_klass, :context, :base_url, :namespace
 
     def initialize(params = nil, options = {})
       @context = options.fetch(:context, nil)

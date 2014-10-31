@@ -950,11 +950,17 @@ class PostsControllerTest < ActionController::TestCase
 end
 
 class TagsControllerTest < ActionController::TestCase
+  def after_teardown
+    JSONAPI.configuration.toplevel_links = :none
+  end
+
   def test_tags_index
-    get :index, {ids: '6,7,8,9', include: 'posts,posts.tags,posts.author.posts'}
+    get :index, {ids: '6,7,8', include: 'posts,posts.tags,posts.author'}
     assert_response :success
-    assert_equal 4, json_response['tags'].size
+    assert_equal 3, json_response['tags'].size
     assert_equal 2, json_response['linked']['posts'].size
+    assert_equal 1, json_response['linked']['tags'].size
+    assert_nil json_response['links']
   end
 
   def test_tags_show_multiple
@@ -970,6 +976,124 @@ class TagsControllerTest < ActionController::TestCase
     assert json_response['tags'].is_a?(Array)
     assert_equal 4, json_response['tags'].size
     assert_equal 2, json_response['linked']['posts'].size
+  end
+
+  def test_tags_show_multiple_with_include_top_level_links
+    JSONAPI.configuration.toplevel_links = :href
+
+    get :show, {id: '6,7,8,9', include: 'posts,posts.tags,posts.author'}
+    assert_response :success
+    assert json_response['tags'].is_a?(Array)
+    assert_equal 4, json_response['tags'].size
+    assert_equal 2, json_response['linked']['posts'].size
+    assert_equal 7, json_response['links'].size
+  end
+end
+
+class Api::V1::TagsControllerTest < ActionController::TestCase
+  def after_teardown
+    JSONAPI.configuration.toplevel_links = :none
+  end
+
+  def test_tags_show_multiple_with_include_top_level_links_namespaced_hrefs
+    JSONAPI.configuration.toplevel_links = :href
+
+    get :show, {id: '1,2', sort: 'name', include: 'posts,posts.tags,posts.author,posts.author.posts'}
+    assert_response :success
+    assert json_response['tags'].is_a?(Array)
+    assert_equal 7, json_response['links'].size
+
+    assert_equal 7, json_response['links'].size
+
+    assert_hash_equals json_response['links'],
+       {
+        'posts.author' => 'http://test.host/api/v1/people/{posts.author}',
+        'posts.section' => 'http://test.host/api/v1/sections/{posts.section}',
+        'posts.tags' => 'http://test.host/api/v1/tags/{posts.tags}',
+        'posts.comments' => 'http://test.host/api/v1/comments/{posts.comments}',
+        'people.comments' => 'http://test.host/api/v1/comments/{people.comments}',
+        'people.posts' => 'http://test.host/api/v1/posts/{people.posts}',
+        'tags.posts' => 'http://test.host/api/v1/posts/{tags.posts}'
+       }
+
+    assert_equal 2, json_response['tags'].size
+    assert_equal 'short', json_response['tags'][0]['name']
+    assert_equal 'whiny', json_response['tags'][1]['name']
+
+    assert_equal 1, json_response['linked']['tags'].size
+    assert_equal 'grumpy', json_response['linked']['tags'][0]['name']
+
+    assert_equal 3, json_response['linked']['posts'].size
+    assert_equal 1, json_response['linked']['people'].size
+  end
+
+  def test_tags_show_multiple_with_include_top_level_links_namespaced_full
+    JSONAPI.configuration.toplevel_links = :full
+
+    get :show, {id: '1,2', sort: 'name', include: 'posts,posts.tags,posts.author,posts.author.posts'}
+    assert_response :success
+    assert json_response['tags'].is_a?(Array)
+    assert_equal 7, json_response['links'].size
+
+    assert_equal 7, json_response['links'].size
+
+    assert_hash_equals json_response['links'],
+                       {
+                         'posts.author' => {
+                           href: 'http://test.host/api/v1/people/{posts.author}',
+                           type: 'people'
+                         },
+                         'posts.section' =>  {
+                           href: 'http://test.host/api/v1/sections/{posts.section}',
+                           type: 'sections'
+                         },
+                         'posts.tags' =>  {
+                           href: 'http://test.host/api/v1/tags/{posts.tags}',
+                           type: 'tags'
+                         },
+                         'posts.comments' =>  {
+                           href: 'http://test.host/api/v1/comments/{posts.comments}',
+                           type: 'comments'
+                         },
+                         'people.comments' =>  {
+                           href: 'http://test.host/api/v1/comments/{people.comments}',
+                           type: 'comments'
+                         },
+                         'people.posts' =>  {
+                           href: 'http://test.host/api/v1/posts/{people.posts}',
+                           type: 'posts'
+                         },
+                         'tags.posts' =>  {
+                           href: 'http://test.host/api/v1/posts/{tags.posts}',
+                           type: 'posts'
+                         }
+                       }
+
+    assert_equal 2, json_response['tags'].size
+    assert_equal 'short', json_response['tags'][0]['name']
+    assert_equal 'whiny', json_response['tags'][1]['name']
+
+    assert_equal 1, json_response['linked']['tags'].size
+    assert_equal 'grumpy', json_response['linked']['tags'][0]['name']
+
+    assert_equal 3, json_response['linked']['posts'].size
+    assert_equal 1, json_response['linked']['people'].size
+  end
+
+  def test_tags_show_multiple_exclude_top_level_links
+    get :show, {id: '1,2', include: 'posts,posts.tags,posts.author,posts.author.posts'}
+    assert_response :success
+    assert json_response['tags'].is_a?(Array)
+    assert_nil json_response['links']
+    assert_equal 2, json_response['tags'].size
+    assert_equal 'short', json_response['tags'][0]['name']
+    assert_equal 'whiny', json_response['tags'][1]['name']
+
+    assert_equal 1, json_response['linked']['tags'].size
+    assert_equal 'grumpy', json_response['linked']['tags'][0]['name']
+
+    assert_equal 3, json_response['linked']['posts'].size
+    assert_equal 1, json_response['linked']['people'].size
   end
 end
 
