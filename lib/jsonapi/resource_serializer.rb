@@ -78,7 +78,22 @@ module JSONAPI
     def add_top_level_links(resource_type)
       return if @toplevel_links == :none
       resource = Resource.resource_for(resource_type)
-      @links.merge!(resource._links(link_format: @toplevel_links, namespace: @namespace, base_url: @base_url))
+      resource._links.each do |name, link|
+        href = link.href(namespace: @namespace, base_url: @base_url)
+        @links[name] = case @toplevel_links
+          when :full
+            {
+              href: href,
+              type: link.type
+            }
+          when :href
+            href
+          else
+            # :nocov:
+            raise ArgumentError.new(@toplevel_links)
+          # :nocov:
+        end
+      end
     end
 
     # Convert an array of associated objects to include along with the primary document in the form of

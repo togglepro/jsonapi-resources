@@ -1,6 +1,7 @@
 require 'jsonapi/configuration'
 require 'jsonapi/resource_for'
 require 'jsonapi/association'
+require 'jsonapi/resource_link'
 
 module JSONAPI
   class Resource
@@ -123,6 +124,7 @@ module JSONAPI
       def inherited(base)
         base._attributes = (_attributes || {}).dup
         base._associations = (_associations || {}).dup
+        base._links = (_links || {}).dup
         base._allowed_filters = (_allowed_filters || Set.new).dup
 
         type = base.name.demodulize.sub(/Resource$/, '').underscore
@@ -133,7 +135,7 @@ module JSONAPI
         @@resource_types[base._type] ||= base.name.demodulize
       end
 
-      attr_accessor :_attributes, :_associations, :_allowed_filters , :_type
+      attr_accessor :_attributes, :_associations, :_allowed_filters , :_type, :_links
 
       def create(context)
         self.new(self.create_model, context)
@@ -221,42 +223,6 @@ module JSONAPI
 
       def fields
         _associations.keys | _attributes.keys
-      end
-
-      def _links(options = {})
-        link_format = options.fetch(:link_format, :href)
-        return if link_format == :none
-
-        # ToDo: Find a better way to generate the URL.
-        namespace = options.fetch(:namespace, '')
-        base_url = options.fetch(:base_url, 'localhost')
-
-        links = {}
-        _associations.values.each do |association|
-          namespaced_name = if namespace.blank?
-                              "#{association.type.to_s.pluralize}"
-                            else
-                              "#{namespace.underscore}/#{association.type.to_s.pluralize}"
-                            end
-
-          href = "#{base_url}/#{namespaced_name}/{#{_type}.#{association.name}}"
-
-          links["#{_type}.#{association.name}"] =
-            case link_format
-              when :full
-                {
-                  href: href,
-                  type: association.type.to_s
-                }
-              when :href
-                href
-              else
-                # :nocov:
-                raise ArgumentError.new(link_format)
-                # :nocov:
-            end
-        end
-        links
       end
 
       # Override this method if you have more complex requirements than this basic find method provides
@@ -450,6 +416,8 @@ module JSONAPI
               return resources
             end unless method_defined?(attr)
           end
+
+          @_links["#{self._type}.#{attr}"] = ResourceLink.new(self, attr)
         end
       end
 
