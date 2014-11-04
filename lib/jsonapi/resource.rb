@@ -1,7 +1,6 @@
 require 'jsonapi/configuration'
 require 'jsonapi/resource_for'
 require 'jsonapi/association'
-require 'jsonapi/resource_link'
 
 module JSONAPI
   class Resource
@@ -124,7 +123,6 @@ module JSONAPI
       def inherited(base)
         base._attributes = (_attributes || {}).dup
         base._associations = (_associations || {}).dup
-        base._links = (_links || {}).dup
         base._allowed_filters = (_allowed_filters || Set.new).dup
 
         type = base.name.demodulize.sub(/Resource$/, '').underscore
@@ -135,7 +133,7 @@ module JSONAPI
         @@resource_types[base._type] ||= base.name.demodulize
       end
 
-      attr_accessor :_attributes, :_associations, :_allowed_filters , :_type, :_links
+      attr_accessor :_attributes, :_associations, :_allowed_filters , :_type
 
       def create(context)
         self.new(self.create_model, context)
@@ -416,8 +414,6 @@ module JSONAPI
               return resources
             end unless method_defined?(attr)
           end
-
-          @_links["#{self._type}.#{attr}"] = ResourceLink.new(self, attr)
         end
       end
 

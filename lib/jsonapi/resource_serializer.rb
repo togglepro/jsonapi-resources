@@ -78,13 +78,13 @@ module JSONAPI
     def add_top_level_links(resource_type)
       return if @toplevel_links == :none
       resource = Resource.resource_for(resource_type)
-      resource._links.each do |name, link|
-        href = link.href(namespace: @namespace, base_url: @base_url)
-        @links[name] = case @toplevel_links
+      resource._associations.each_value do |association|
+        href = association.href_template(resource_type, namespace: @namespace, base_url: @base_url)
+        @links["#{resource._type}.#{association.name}"] = case @toplevel_links_style
           when :full
             {
               href: href,
-              type: link.type
+              type: association.type.to_s
             }
           when :href
             href

@@ -21,6 +21,21 @@ module JSONAPI
       @primary_key ||= Resource.resource_for(@name)._primary_key
     end
 
+    def href_base(options)
+      namespace = options.fetch(:namespace, '')
+      base_url = options.fetch(:base_url, '')
+      "#{base_url.blank? ? '' : base_url + '/'}#{namespace.blank? ? '' : namespace.underscore}/#{type}"
+    end
+
+    def href(ids, options = {})
+      ids_csv = ids.is_a?(Array) ? ids.join(',') : ids
+      "#{href_base(options)}/#{ids_csv}"
+    end
+
+    def href_template(primary_resource_type, options = {})
+      "#{href_base(options)}/{#{primary_resource_type}.#{name.to_s}}"
+    end
+
     class HasOne < Association
       def initialize(name, options={})
         super
