@@ -5,8 +5,8 @@ module JSONAPI
     attr_reader :json_key_format,
                 :key_formatter,
                 :base_url,
-                :serialize_has_many
                 :toplevel_links_style,
+                :resource_links_style
 
     def initialize
       #:underscored_key, :camelized_key, :dasherized_key, or custom
@@ -17,8 +17,8 @@ module JSONAPI
 
       self.base_url = ''
 
-      #:ids | :href
-      self.serialize_has_many = :ids
+      #:ids | :collection_objects
+      self.resource_links_style = :ids
     end
 
     def json_key_format=(format)
@@ -35,9 +35,9 @@ module JSONAPI
       @base_url = base_url
     end
 
-    def serialize_has_many=(serialize_has_many)
-      raise ArgumentError.new(serialize_has_many) unless [:ids, :href].include?(serialize_has_many)
-      @serialize_has_many = serialize_has_many
+    def resource_links_style=(resource_links_style)
+      raise ArgumentError.new(resource_links_style) unless [:ids, :collection_objects].include?(resource_links_style)
+      @resource_links_style = resource_links_style
     end
   end
 
