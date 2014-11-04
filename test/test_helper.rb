@@ -24,7 +24,7 @@ Rails.env = 'test'
 JSONAPI.configure do |config|
   config.json_key_format = :camelized_key
 
-  config.toplevel_links = :none
+  config.toplevel_links_style = :none
   config.base_url = 'http://localhost/'
 end
 

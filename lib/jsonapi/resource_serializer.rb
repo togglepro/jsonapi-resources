@@ -3,25 +3,41 @@ module JSONAPI
     include ActionController::UrlFor
     include Rails.application.routes.url_helpers
 
-    # Converts a single resource, or an array of resources to a hash, conforming to the JSONAPI structure
+    # Converts a single resource, or an array of resources to a hash, conforming to the JSONAPI
+    # structure. Options include:
     # include:
-    #     Purpose: determines which objects will be side loaded with the source objects in a linked section
+    #     Purpose: determines which objects will be side loaded with the source objects in a
+    #              linked section
     #     Example: ['comments','author','comments.tags','author.posts']
     # fields:
-    #     Purpose: determines which fields are serialized for a resource type. This encompasses both attributes and
-    #              association ids in the links section for a resource. Fields are global for a resource type.
-    #     Example: { people: [:id, :email, :comments], posts: [:id, :title, :author], comments: [:id, :body, :post]}
+    #     Purpose: determines which fields are serialized for a resource type. This encompasses
+    #              both attributes and association ids in the links section for a resource. Fields
+    #              are global for a resource type.
+    #     Example: { people: [:id, :email, :comments], posts: [:id, :title, :author],
+    #                comments: [:id, :body, :post]}
+    # toplevel_links_style:
+    #     Purpose: sets the style of top level links. Valid values are :none, :href_only, :full
+    # resource_links_style:
+    #     Purpose: sets the style of resource level links. Valid values are :ids, :collection_objects
+    # base_url:
+    #     Purpose: the base url for href generation
+    # namespace:
+    #     Purpose: the namespace for href generation
+
     def serialize_to_hash(source, options = {})
       is_resource_collection = source.respond_to?(:to_ary)
       return {} if source.nil? || (is_resource_collection && source.size == 0)
 
       @fields =  options.fetch(:fields, {})
       include = options.fetch(:include, [])
-      @base_url = options.fetch(:base_url, '/')
+      @base_url = options.fetch(:base_url, '')
       @namespace = options.fetch(:namespace, '')
 
       @key_formatter = options.fetch(:key_formatter, JSONAPI.configuration.key_formatter)
-      @toplevel_links = options.fetch(:toplevel_links, JSONAPI.configuration.toplevel_links)
+      @toplevel_links_style = options.fetch(:toplevel_links_style,
+                                            JSONAPI.configuration.toplevel_links_style)
+      @resource_links_style = options.fetch(:resource_links_style,
+                                            JSONAPI.configuration.resource_links_style)
 
       @linked_objects = {}
       @links = {}
@@ -76,7 +92,7 @@ module JSONAPI
 
     private
     def add_top_level_links(resource_type)
-      return if @toplevel_links == :none
+      return if @toplevel_links_style == :none
       resource = Resource.resource_for(resource_type)
       resource._associations.each_value do |association|
         href = association.href_template(resource_type, namespace: @namespace, base_url: @base_url)
@@ -90,15 +106,15 @@ module JSONAPI
             href
           else
             # :nocov:
-            raise ArgumentError.new(@toplevel_links)
+            raise ArgumentError.new(@toplevel_links_style)
           # :nocov:
         end
       end
     end
 
     # Convert an array of associated objects to include along with the primary document in the form of
-    # ['comments','author','comments.tags','author.posts'] into a structure that tells what we need to include
-    # from each association.
+    # ['comments','author','comments.tags','author.posts'] into a structure that tells what we need to
+    # include from each association.
     def parse_includes(includes, requested_associations)
       includes.each do |include|
         include = include.to_s.underscore
@@ -109,7 +125,8 @@ module JSONAPI
           requested_associations[association_name] ||= {}
           requested_associations[association_name].store(:include_children, true)
           requested_associations[association_name][:include_related] ||= {}
-          parse_includes([include[pos+1, include.length]], requested_associations[association_name][:include_related])
+          parse_includes([include[pos+1, include.length]],
+                         requested_associations[association_name][:include_related])
         else
           association_name = include.to_sym
           requested_associations[association_name] ||= {}
@@ -118,9 +135,10 @@ module JSONAPI
       end if includes.is_a?(Array)
     end
 
-    # Process the primary source object(s). This will then serialize associated object recursively based on the
-    # requested includes. Fields are controlled fields option for each resource type, such
-    # as fields: { people: [:id, :email, :comments], posts: [:id, :title, :author], comments: [:id, :body, :post]}
+    # Process the primary source object(s). This will then serialize associated object recursively
+    # based on the requested includes. Fields are controlled fields option for each resource type,
+    # such as fields: { people: [:id, :email, :comments], posts: [:id, :title, :author],
+    #   comments: [:id, :body, :post]}
     # The fields options controls both fields and included links references.
     def process_primary(source, requested_associations)
       if source.respond_to?(:to_ary)
@@ -164,8 +182,31 @@ module JSONAPI
       end
     end
 
-    # Returns a hash of links for the requested associations for a resource, filtered by the resource
-    # class's fetchable method
+    def collection_hash(source, association)
+      foreign_key = association.foreign_key
+
+      ids = source.send(foreign_key)
+      return nil if ids.nil?
+
+      case @resource_links_style
+        when :collection_objects
+          href = association.href(ids, namespace: @namespace, base_url: @base_url)
+          {
+            ids: ids,
+            href: href,
+            type: association.type.to_s
+          }
+        when :ids
+          ids
+        else
+          # :nocov:
+          raise ArgumentError.new(@resource_links_style)
+        # :nocov:
+      end
+    end
+
+    # Returns a hash of links for the requested associations for a resource, filtered by the
+    # resource class's fetchable method
     def links_hash(source, requested_associations)
       associations = source.class._associations
       requested = requested_fields(source.class._type)
@@ -179,10 +220,8 @@ module JSONAPI
       included_associations = source.fetchable_fields & associations.keys
       associations.each_with_object({}) do |(name, association), hash|
         if included_associations.include? name
-          foreign_key = association.foreign_key
-
           if field_set.include?(name)
-            hash[format_key(name)] = source.send(foreign_key)
+            hash[format_key(name)] = collection_hash(source, association)
           end
 
           ia = requested_associations.is_a?(Hash) ? requested_associations[name] : nil
