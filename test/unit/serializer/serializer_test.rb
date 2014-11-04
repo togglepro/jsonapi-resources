@@ -135,6 +135,29 @@ class SerializerTest < MiniTest::Unit::TestCase
         PostResource.new(@post), include: [:author], resource_links_style: :collection_objects))
   end
 
+  def test_serializer_empty_has_many_resource_links_style_full
+
+    assert_hash_equals(
+      {
+        people: {
+          id: 2,
+          name: 'Fred Reader',
+          email: 'fred@xyz.fake',
+          dateJoined: '2013-10-31 16:25:00 -0400',
+          links: {
+            posts: [],
+            comments: {
+              ids: [2,3],
+              type: 'comments',
+              href: '/comments/2,3'
+            },
+          }
+        }
+      },
+      JSONAPI::ResourceSerializer.new.serialize_to_hash(
+        PersonResource.new(@fred),resource_links_style: :collection_objects))
+  end
+
   def test_serializer_key_format
 
     assert_hash_equals(

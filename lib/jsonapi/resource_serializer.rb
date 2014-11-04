@@ -187,6 +187,7 @@ module JSONAPI
 
       ids = source.send(foreign_key)
       return nil if ids.nil?
+      return [] if ids.is_a?(Array) && ids.length == 0
 
       case @resource_links_style
         when :collection_objects
