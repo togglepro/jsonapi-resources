@@ -951,7 +951,7 @@ end
 
 class TagsControllerTest < ActionController::TestCase
   def after_teardown
-    JSONAPI.configuration.toplevel_links_style = :none
+    JSONAPI.configuration.url_template_style = :none
   end
 
   def test_tags_index
@@ -978,8 +978,8 @@ class TagsControllerTest < ActionController::TestCase
     assert_equal 2, json_response['linked']['posts'].size
   end
 
-  def test_tags_show_multiple_with_include_top_level_links
-    JSONAPI.configuration.toplevel_links_style = :href
+  def test_tags_show_multiple_with_include_url_templates
+    JSONAPI.configuration.url_template_style = :href
 
     get :show, {id: '6,7,8,9', include: 'posts,posts.tags,posts.author'}
     assert_response :success
@@ -992,11 +992,11 @@ end
 
 class Api::V1::TagsControllerTest < ActionController::TestCase
   def after_teardown
-    JSONAPI.configuration.toplevel_links_style = :none
+    JSONAPI.configuration.url_template_style = :none
   end
 
-  def test_tags_show_multiple_with_include_top_level_links_namespaced_hrefs
-    JSONAPI.configuration.toplevel_links_style = :href
+  def test_tags_show_multiple_with_include_url_templates_namespaced_hrefs
+    JSONAPI.configuration.url_template_style = :href
 
     get :show, {id: '1,2', sort: 'name', include: 'posts,posts.tags,posts.author,posts.author.posts'}
     assert_response :success
@@ -1027,8 +1027,8 @@ class Api::V1::TagsControllerTest < ActionController::TestCase
     assert_equal 1, json_response['linked']['people'].size
   end
 
-  def test_tags_show_multiple_with_include_top_level_links_namespaced_full
-    JSONAPI.configuration.toplevel_links_style = :full
+  def test_tags_show_multiple_with_include_url_templates_namespaced_full
+    JSONAPI.configuration.url_template_style = :full
 
     get :show, {id: '1,2', sort: 'name', include: 'posts,posts.tags,posts.author,posts.author.posts'}
     assert_response :success
@@ -1080,7 +1080,7 @@ class Api::V1::TagsControllerTest < ActionController::TestCase
     assert_equal 1, json_response['linked']['people'].size
   end
 
-  def test_tags_show_multiple_exclude_top_level_links
+  def test_tags_show_multiple_exclude_url_templates
     get :show, {id: '1,2', include: 'posts,posts.tags,posts.author,posts.author.posts'}
     assert_response :success
     assert json_response['tags'].is_a?(Array)

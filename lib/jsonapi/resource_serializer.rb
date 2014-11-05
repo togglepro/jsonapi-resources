@@ -15,8 +15,9 @@ module JSONAPI
     #              are global for a resource type.
     #     Example: { people: [:id, :email, :comments], posts: [:id, :title, :author],
     #                comments: [:id, :body, :post]}
-    # toplevel_links_style:
-    #     Purpose: sets the style of top level links. Valid values are :none, :href_only, :full
+    # url_template_style:
+    #     Purpose: sets the style of URL Templates (top level links).
+    #              Valid values are :none, :href_only, :full
     # resource_links_style:
     #     Purpose: sets the style of resource level links. Valid values are :ids, :collection_objects
     # base_url:
@@ -34,8 +35,8 @@ module JSONAPI
       @namespace = options.fetch(:namespace, '')
 
       @key_formatter = options.fetch(:key_formatter, JSONAPI.configuration.key_formatter)
-      @toplevel_links_style = options.fetch(:toplevel_links_style,
-                                            JSONAPI.configuration.toplevel_links_style)
+      @url_template_style = options.fetch(:url_template_style,
+                                          JSONAPI.configuration.url_template_style)
       @resource_links_style = options.fetch(:resource_links_style,
                                             JSONAPI.configuration.resource_links_style)
 
@@ -91,27 +92,6 @@ module JSONAPI
     end
 
     private
-    def add_top_level_links(resource_type)
-      return if @toplevel_links_style == :none
-      resource = Resource.resource_for(resource_type)
-      resource._associations.each_value do |association|
-        href = association.href_template(resource_type, namespace: @namespace, base_url: @base_url)
-        @links["#{resource._type}.#{association.name}"] = case @toplevel_links_style
-          when :full
-            {
-              href: href,
-              type: association.type.to_s
-            }
-          when :href
-            href
-          else
-            # :nocov:
-            raise ArgumentError.new(@toplevel_links_style)
-          # :nocov:
-        end
-      end
-    end
-
     # Convert an array of associated objects to include along with the primary document in the form of
     # ['comments','author','comments.tags','author.posts'] into a structure that tells what we need to
     # include from each association.
@@ -280,9 +260,31 @@ module JSONAPI
       unless already_serialized?(formatted_type, id)
         unless @linked_objects.key?(formatted_type)
           @linked_objects[formatted_type] = {}
-          add_top_level_links(type)
+          add_url_templates_for_resource(type)
         end
         @linked_objects[formatted_type].store(id, {primary: primary, object_hash: obj})
+      end
+    end
+
+    def add_url_templates_for_resource(resource_type)
+      return if @url_template_style == :none
+      resource = Resource.resource_for(resource_type)
+      resource._associations.each_value do |association|
+        href = association.href_template(resource_type, namespace: @namespace, base_url: @base_url)
+        @links["#{resource._type}.#{association.name}"] =
+          case @url_template_style
+            when :full
+              {
+                href: href,
+                type: association.type.to_s
+              }
+            when :href
+              href
+            else
+              # :nocov:
+              raise ArgumentError.new(@url_template_style)
+            # :nocov:
+          end
       end
     end
 

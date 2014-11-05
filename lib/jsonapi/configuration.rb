@@ -5,7 +5,7 @@ module JSONAPI
     attr_reader :json_key_format,
                 :key_formatter,
                 :base_url,
-                :toplevel_links_style,
+                :url_template_style,
                 :resource_links_style
 
     def initialize
@@ -13,7 +13,7 @@ module JSONAPI
       self.json_key_format = :underscored_key
 
       #:none | :href_only | :full
-      self.toplevel_links_style = :none
+      self.url_template_style = :none
 
       self.base_url = ''
 
@@ -26,9 +26,9 @@ module JSONAPI
       @key_formatter = JSONAPI::Formatter.formatter_for(format)
     end
 
-    def toplevel_links_style=(toplevel_links_style)
-      raise ArgumentError.new(toplevel_links_style) unless [:none, :href, :full].include?(toplevel_links_style)
-      @toplevel_links_style = toplevel_links_style
+    def url_template_style=(url_template_style)
+      raise ArgumentError.new(url_template_style) unless [:none, :href, :full].include?(url_template_style)
+      @url_template_style = url_template_style
     end
 
     def base_url=(base_url)
