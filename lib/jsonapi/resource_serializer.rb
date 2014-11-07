@@ -39,6 +39,7 @@ module JSONAPI
                                           JSONAPI.configuration.url_template_style)
       @resource_links_style = options.fetch(:resource_links_style,
                                             JSONAPI.configuration.resource_links_style)
+      @has_many_href_style = options.fetch(:has_many_href_style, JSONAPI.configuration.has_many_href_style)
 
       @linked_objects = {}
       @links = {}
@@ -74,7 +75,7 @@ module JSONAPI
 
       primary_hash = {}
 
-      if @links.size > 0
+      if @url_template_style != :none && @links.size > 0
         primary_hash.merge!({links: @links})
       end
 
@@ -171,12 +172,29 @@ module JSONAPI
 
       case @resource_links_style
         when :collection_objects
-          href = association.href(ids, namespace: @namespace, base_url: @base_url)
-          {
-            ids: ids,
-            href: href,
-            type: association.type.to_s
-          }
+          if association.is_a?(JSONAPI::Association::HasMany)
+            href = source.href_for(association.name, style: @has_many_href_style, ids: ids, namespace: @namespace, base_url: @base_url)
+
+            if @has_many_href_style == :filter_based
+              {
+                href: href,
+                type: association.type.to_s
+              }
+            else
+              {
+                ids: ids,
+                href: href,
+                type: association.type.to_s
+              }
+            end
+          else
+            href = source.href_for(association.name, style: :id_based, ids: ids, namespace: @namespace, base_url: @base_url)
+            {
+              ids: ids,
+              href: href,
+              type: association.type.to_s
+            }
+          end
         when :ids
           ids
         else
@@ -270,7 +288,10 @@ module JSONAPI
       return if @url_template_style == :none
       resource = Resource.resource_for(resource_type)
       resource._associations.each_value do |association|
-        href = association.href_template(resource_type, namespace: @namespace, base_url: @base_url)
+        href = resource.url_template_for(association.name,
+                                         has_many_href_style: @has_many_href_style,
+                                         namespace: @namespace,
+                                         base_url: @base_url)
         @links["#{resource._type}.#{association.name}"] =
           case @url_template_style
             when :full

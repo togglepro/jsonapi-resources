@@ -952,6 +952,8 @@ end
 class TagsControllerTest < ActionController::TestCase
   def after_teardown
     JSONAPI.configuration.url_template_style = :none
+    JSONAPI.configuration.has_many_href_style = :id_based
+    JSONAPI.configuration.resource_links_style = :ids
   end
 
   def test_tags_index
@@ -988,11 +990,23 @@ class TagsControllerTest < ActionController::TestCase
     assert_equal 2, json_response['linked']['posts'].size
     assert_equal 7, json_response['links'].size
   end
+
+  def test_tags_includes_denied_for_filter_based_has_many_associations
+    JSONAPI.configuration.url_template_style = :href
+    JSONAPI.configuration.has_many_href_style = :filter_based
+    JSONAPI.configuration.resource_links_style = :collection_objects
+
+    get :show, {id: '6,7,8,9', include: 'posts,posts.tags,posts.author'}
+    assert_response :bad_request
+    assert_match /posts is not a valid include for tags/, json_response['errors'][0]['detail']
+    assert_match /tags is not a valid include for posts/, json_response['errors'][1]['detail']
+  end
 end
 
 class Api::V1::TagsControllerTest < ActionController::TestCase
   def after_teardown
     JSONAPI.configuration.url_template_style = :none
+    JSONAPI.configuration.has_many_href_style = :id_based
   end
 
   def test_tags_show_multiple_with_include_url_templates_namespaced_hrefs
@@ -1015,6 +1029,39 @@ class Api::V1::TagsControllerTest < ActionController::TestCase
         'people.posts' => 'http://test.host/api/v1/posts/{people.posts}',
         'tags.posts' => 'http://test.host/api/v1/posts/{tags.posts}'
        }
+
+    assert_equal 2, json_response['tags'].size
+    assert_equal 'short', json_response['tags'][0]['name']
+    assert_equal 'whiny', json_response['tags'][1]['name']
+
+    assert_equal 1, json_response['linked']['tags'].size
+    assert_equal 'grumpy', json_response['linked']['tags'][0]['name']
+
+    assert_equal 3, json_response['linked']['posts'].size
+    assert_equal 1, json_response['linked']['people'].size
+  end
+
+  def test_tags_show_multiple_with_include_url_templates_namespaced_hrefs_filter_based_hrefs
+    JSONAPI.configuration.url_template_style = :href
+    JSONAPI.configuration.has_many_href_style = :filter_based
+
+    get :show, {id: '1,2', sort: 'name', include: 'posts,posts.tags,posts.author,posts.author.posts'}
+    assert_response :success
+    assert json_response['tags'].is_a?(Array)
+    assert_equal 7, json_response['links'].size
+
+    assert_equal 7, json_response['links'].size
+
+    assert_hash_equals json_response['links'],
+                       {
+                         'posts.author' => 'http://test.host/api/v1/people/{posts.author}',
+                         'posts.section' => 'http://test.host/api/v1/sections/{posts.section}',
+                         'posts.tags' => 'http://test.host/api/v1/tags/?posts={posts.id}',
+                         'posts.comments' => 'http://test.host/api/v1/comments/?posts={posts.id}',
+                         'people.comments' => 'http://test.host/api/v1/comments/?people={people.id}',
+                         'people.posts' => 'http://test.host/api/v1/posts/?people={people.id}',
+                         'tags.posts' => 'http://test.host/api/v1/posts/?tags={tags.id}'
+                       }
 
     assert_equal 2, json_response['tags'].size
     assert_equal 'short', json_response['tags'][0]['name']

@@ -6,7 +6,8 @@ module JSONAPI
                 :key_formatter,
                 :base_url,
                 :url_template_style,
-                :resource_links_style
+                :resource_links_style,
+                :has_many_href_style
 
     def initialize
       #:underscored_key, :camelized_key, :dasherized_key, or custom
@@ -19,6 +20,9 @@ module JSONAPI
 
       #:ids | :collection_objects
       self.resource_links_style = :ids
+
+      #:id_based | :filter_based
+      self.has_many_href_style = :id_based
     end
 
     def json_key_format=(format)
@@ -38,6 +42,11 @@ module JSONAPI
     def resource_links_style=(resource_links_style)
       raise ArgumentError.new(resource_links_style) unless [:ids, :collection_objects].include?(resource_links_style)
       @resource_links_style = resource_links_style
+    end
+
+    def has_many_href_style=(has_many_href_style)
+      raise ArgumentError.new(has_many_href_style) unless [:id_based, :filter_based].include?(has_many_href_style)
+      @has_many_href_style = has_many_href_style
     end
   end
 

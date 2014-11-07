@@ -158,6 +158,29 @@ class SerializerTest < MiniTest::Unit::TestCase
         PersonResource.new(@fred),resource_links_style: :collection_objects))
   end
 
+  def test_serializer_empty_has_many_resource_links_style_full_filtered
+
+    assert_hash_equals(
+      {
+        people: {
+          id: 2,
+          name: 'Fred Reader',
+          email: 'fred@xyz.fake',
+          dateJoined: '2013-10-31 16:25:00 -0400',
+          links: {
+            posts: [],
+            comments: {
+              type: 'comments',
+              href: '/comments/?people=2'
+            },
+          }
+        }
+      },
+      JSONAPI::ResourceSerializer.new.serialize_to_hash(
+        PersonResource.new(@fred),resource_links_style: :collection_objects,
+        has_many_href_style: :filter_based))
+  end
+
   def test_serializer_key_format
 
     assert_hash_equals(
@@ -191,6 +214,59 @@ class SerializerTest < MiniTest::Unit::TestCase
         PostResource.new(@post),
         include: [:author],
         key_formatter: UnderscoredKeyFormatter))
+  end
+
+  def test_serializer_key_format_href_style_filtered
+
+    assert_hash_equals(
+      {
+        posts: {
+          id: 1,
+          title: 'New post',
+          body: 'A body!!!',
+          subject: 'New post',
+          links: {
+            author: {
+              ids: 1,
+              href: '/people/1',
+              type: 'people'
+            },
+            tags: {
+              href: '/tags/?posts=1',
+              type: 'tags'
+            },
+            comments: {
+              href: '/comments/?posts=1',
+              type: 'comments'
+            },
+            section: nil
+          }
+        },
+        linked: {
+          people: [{
+                     id: 1,
+                     name: 'Joe Author',
+                     email: 'joe@xyz.fake',
+                     date_joined: '2013-08-07 16:25:00 -0400',
+                     links: {
+                       comments: {
+                         href: '/comments/?people=1',
+                         type: 'comments'
+                       },
+                       posts: {
+                         href: '/posts/?people=1',
+                         type: 'posts'
+                       }
+                     }
+                   }]
+        }
+      },
+      JSONAPI::ResourceSerializer.new.serialize_to_hash(
+        PostResource.new(@post),
+        include: [:author],
+        key_formatter: UnderscoredKeyFormatter,
+        has_many_href_style: :filter_based,
+        resource_links_style: :collection_objects))
   end
 
   def test_serializer_include_sub_objects

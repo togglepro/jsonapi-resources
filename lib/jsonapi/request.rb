@@ -104,7 +104,14 @@ module JSONAPI
 
       association = resource_klass._association(association_name)
       if association
-        unless include_parts.last.empty?
+        if include_parts.last.empty?
+          if association.is_a?(JSONAPI::Association::HasMany) &&
+             JSONAPI.configuration.resource_links_style == :collection_objects &&
+             association.href_style(JSONAPI.configuration.has_many_href_style) == :filter_based
+            @errors.concat(JSONAPI::Exceptions::InvalidInclude.new(format_key(resource_klass._type),
+                                                                   include_parts.first, ).errors)
+          end
+        else
           check_include(Resource.resource_for(association.class_name), include_parts.last.partition('.'))
         end
       else

@@ -119,11 +119,29 @@ module JSONAPI
       self.class.fields
     end
 
+    def href_for(association_type, options = {})
+      association = self.class._association(association_type)
+      style = options.fetch(:style, :id_based)
+
+      case style
+        when :id_based
+          ids = options[:ids]
+          ids_csv = ids.is_a?(Array) ? ids.join(',') : ids
+          return "#{association.href(self.class.href_base(options))}/#{ids_csv}"
+        when :filter_based
+          return "#{association.href(self.class.href_base(options))}/?#{self.class._type}=#{id}"
+        else
+          # :nocov:
+          raise ArgumentError.new(style)
+        # :nocov:
+      end
+    end
+
     class << self
       def inherited(base)
         base._attributes = (_attributes || {}).dup
         base._associations = (_associations || {}).dup
-        base._allowed_filters = (_allowed_filters || Set.new).dup
+        base._allowed_filters = (_allowed_filters || Set.new([_primary_key])).dup
 
         type = base.name.demodulize.sub(/Resource$/, '').underscore
         base._type = type.pluralize.to_sym
@@ -357,6 +375,32 @@ module JSONAPI
         return class_name
       end
 
+      def href_base(options)
+        namespace = options.fetch(:namespace, '')
+        base_url = options.fetch(:base_url, '')
+        "#{base_url.blank? ? '' : base_url + '/'}#{namespace.blank? ? '' : namespace.underscore}"
+      end
+
+      def url_template_for(association_type, options = {})
+        association = _association(association_type)
+        if association.is_a?(JSONAPI::Association::HasMany)
+          href_style = association.href_style(options.fetch(:has_many_href_style, :id_based))
+
+          case href_style
+            when :id_based
+              return "#{association.href(href_base(options))}/{#{_type}.#{association.name.to_s}}"
+            when :filter_based
+              return "#{association.href(href_base(options))}/?#{_type}={#{_type}.id}"
+            else
+              # :nocov:
+              raise ArgumentError.new(href_style)
+              # :nocov:
+          end
+        else
+          return "#{association.href(href_base(options))}/{#{_type}.#{association.name.to_s}}"
+        end
+      end
+
       # :nocov:
       if RUBY_VERSION >= '2.0'
         def _model_class
@@ -380,6 +424,8 @@ module JSONAPI
 
         attrs.each do |attr|
           @_associations[attr] = klass.new(attr, options)
+
+          filter(attr)
 
           foreign_key = @_associations[attr].foreign_key
 

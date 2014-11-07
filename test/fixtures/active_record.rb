@@ -361,8 +361,7 @@ class PostResource < JSONAPI::Resource
     @model.title
   end
 
-  filters :title, :author, :tags, :comments
-  filter :id
+  filters :title
 
   def self.updateable_fields(context)
     super(context) - [:author, :subject]

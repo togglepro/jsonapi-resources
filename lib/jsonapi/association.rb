@@ -21,19 +21,8 @@ module JSONAPI
       @primary_key ||= Resource.resource_for(@name)._primary_key
     end
 
-    def href_base(options)
-      namespace = options.fetch(:namespace, '')
-      base_url = options.fetch(:base_url, '')
-      "#{base_url.blank? ? '' : base_url + '/'}#{namespace.blank? ? '' : namespace.underscore}/#{type}"
-    end
-
-    def href(ids, options = {})
-      ids_csv = ids.is_a?(Array) ? ids.join(',') : ids
-      "#{href_base(options)}/#{ids_csv}"
-    end
-
-    def href_template(primary_resource_type, options = {})
-      "#{href_base(options)}/{#{primary_resource_type}.#{name.to_s}}"
+    def href(base)
+      "#{base}/#{type}"
     end
 
     class HasOne < Association
@@ -51,6 +40,16 @@ module JSONAPI
         @class_name = options.fetch(:class_name, name.to_s.capitalize.singularize)
         @type = class_name.underscore.pluralize.to_sym
         @foreign_key  ||= @key.nil? ? "#{name.to_s.singularize}_ids".to_sym : @key
+        self.href_style = options.fetch(:href_style, :default)
+      end
+
+      def href_style=(href_style)
+        raise ArgumentError.new(href_style) unless [:default, :id_based, :filter_based].include?(href_style)
+        @href_style = href_style
+      end
+
+      def href_style(default = JSONAPI.configuration.has_many_href_style)
+        @href_style == :default ? default : @href_style
       end
     end
   end
