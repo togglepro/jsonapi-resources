@@ -1126,14 +1126,14 @@ class ExpenseEntriesControllerTest < ActionController::TestCase
   def test_expense_entries_show_bad_include_missing_association
     get :show, {id: 1, include: 'isoCurrencies,employees'}
     assert_response :bad_request
-    assert_match /isoCurrencies is not a valid association of expenseEntries/, json_response['errors'][0]['detail']
-    assert_match /employees is not a valid association of expenseEntries/, json_response['errors'][1]['detail']
+    assert_match /isoCurrencies is not a valid include for expenseEntries/, json_response['errors'][0]['detail']
+    assert_match /employees is not a valid include for expenseEntries/, json_response['errors'][1]['detail']
   end
 
   def test_expense_entries_show_bad_include_missing_sub_association
     get :show, {id: 1, include: 'isoCurrency,employee.post'}
     assert_response :bad_request
-    assert_match /post is not a valid association of people/, json_response['errors'][0]['detail']
+    assert_match /post is not a valid include for people/, json_response['errors'][0]['detail']
   end
 
   def test_expense_entries_show_fields

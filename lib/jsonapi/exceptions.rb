@@ -126,7 +126,7 @@ module JSONAPI
         [JSONAPI::Error.new(code: JSONAPI::INVALID_INCLUDE,
                             status: :bad_request,
                             title: 'Invalid field',
-                            detail: "#{association} is not a valid association of #{resource}")]
+                            detail: "#{association} is not a valid include for #{resource}")]
       end
     end
 
