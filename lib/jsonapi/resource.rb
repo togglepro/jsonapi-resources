@@ -444,7 +444,13 @@ module JSONAPI
       end
 
       def apply_filter(records, filter, value, _options = {})
-        records.where(filter => value)
+        if records.respond_to?(:where)
+          records.where(filter => value)
+        else
+          records.select do |record|
+            record.public_send(filter) == value
+          end
+        end
       end
 
       def apply_filters(records, filters, options = {})
